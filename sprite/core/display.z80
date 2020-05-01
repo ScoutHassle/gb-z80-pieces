@@ -1,0 +1,15 @@
+SECTION "Display", ROM0
+
+; Waits to pass VBlank e.g. when its safe 
+; to turn of the screen and access VRAM.
+WaitVBlank:
+   ld a, [rLY]
+   cp 144 ; Check if we are past VBlank
+   jr nz, WaitVBlank ; else wait
+ret
+
+; Turn off the LCD
+LCDOff
+	xor a ; AKA ld a, 0
+	ld [rLCDC], a
+ret

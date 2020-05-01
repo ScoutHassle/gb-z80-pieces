@@ -1,0 +1,40 @@
+INCLUDE "core/hardware.inc"
+INCLUDE "core/memory.z80"
+INCLUDE "core/display.z80"
+
+SECTION "Header", ROM0[$100]
+
+EntryPoint: ; Execution begins
+	;di ; Disable interrupts.
+	nop
+	jp main ;
+
+REPT $150 - $104
+	db 0
+endr
+
+SECTION "Game code", rom0
+
+INCLUDE "assets/cloud.inc"
+
+main:
+    
+    call WaitVBlank
+    call LCDOff
+
+.main_loop:
+
+	jr .main_loop
+
+loadCloudSprite::
+    ; Load sprite into memory.
+    ld hl, $8000
+	ld de, CloudTile
+	ld bc, 16
+	call memcpy
+
+    ; Set sprite data.
+    ld hl, $FE00
+    ; Sprite Memory Layout. 4 bytes per sprite.
+    ; 0 - Y / 1 - X / 2 - TileNumber / 3 - Attributes
+ret
