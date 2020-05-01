@@ -1,0 +1,118 @@
+INCLUDE "core/hardware.inc"
+INCLUDE "core/memory.z80"
+
+SECTION "Header", ROM0[$100]
+
+EntryPoint: ; Execution begins
+	;di ; Disable interrupts.
+	nop
+	jp main ;
+
+REPT $150 - $104
+	db 0
+endr
+
+SECTION "Game code", rom0
+
+INCLUDE "assets/cloud.inc"
+INCLUDE "assets/cloudsmap.inc"
+
+main:
+	; main loop   
+	call waitVBlank
+
+	; LCD off.
+	xor a ; AKA ld a, 0
+	ld [rLCDC], a
+
+	call loadTileLabel
+	call initdisplay
+
+	; init our values
+	ld hl, XPos
+	ld [HL], $00
+
+.main_loop:
+
+	call .scrollRight
+   	call wait
+
+	;call .scrollLeft
+	;call wait
+
+	jr .main_loop
+
+.scrollRight:
+	ld hl, XPos
+	ld a, [hl]
+	ld b, 1
+	adc a, b
+	ld [hl], a
+
+	ld [rSCX], a
+	ret
+
+.scrollLeft:
+	ld hl, XPos
+	ld a, [hl]
+	ld b, 1
+	sbc a, b
+	ld [hl], a
+
+	ld [rSCX], a
+	ret
+
+wait:  
+	ld      de,$4FFF
+waitloop:  
+		dec     de
+		ld      a,d
+		or      e
+		jr      nz,waitloop
+		ret
+
+waitVBlank:
+   ; halt
+   ld a, [rLY]
+   cp 144 ; Check if we are past VBlank
+   jr nz, waitVBlank
+   ret
+
+initdisplay:
+   ; Init display registers
+	ld a, %11100100 ; Load Palette data
+	ld [rBGP], a
+
+	xor a
+	ld [rSCY], a
+	ld [rSCX], a
+
+	; Shut downthe sound
+	ld [rNR52], a
+
+	; And turn the screen back on
+	ld a, %10000001
+	ld [rLCDC], a
+	ret
+
+; memory locs
+; $8000-$87FF sprite
+; $8800-$8FFF shared
+; $9000  BG tiles
+
+loadTileLabel:
+	ld hl, $9000 ; Writing to... But why? What are those first 10 bytes doing?!
+	ld de, CloudTile
+	ld bc, 16
+	call memcpy
+
+
+	ld hl, $9800
+	ld de, CloudMap ; Currently supports 32 iterations.
+	ld bc, 1024
+	call memcpy
+	ret
+
+SECTION "player_vars", WRAM0
+XPos:: DS 1
+YPos:: DS 1
