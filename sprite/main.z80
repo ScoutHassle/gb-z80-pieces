@@ -5,7 +5,6 @@ INCLUDE "core/display.z80"
 SECTION "Header", ROM0[$100]
 
 EntryPoint: ; Execution begins
-	;di ; Disable interrupts.
 	nop
 	jp main ;
 
