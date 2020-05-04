@@ -1,0 +1,117 @@
+INCLUDE "core/hardware.inc"
+INCLUDE "core/memory.z80"
+INCLUDE "core/display.z80"
+
+SECTION "Header", ROM0[$100]
+
+EntryPoint: ; Execution begins
+nop
+	jp main ;
+
+REPT $150 - $104
+	db 0
+endr
+
+SECTION "Game code", rom0
+
+INCLUDE "assets/Blob_Bounce.z80"
+
+PLAYERY EQU 16
+PLAYERX EQU 8
+
+main::
+    call waitVBlank
+
+    ; stuff - clear sprite VRAM - do this while the screen is on!
+    ld hl, $8000
+    ld bc, $7FF
+    ld a, $00
+    call memset
+
+    call lcdOff
+
+     ; Clear sprite attributes - whilst screen is off...
+    ld hl, $FE00
+    ld bc, $9F
+    ld a, $00
+    call memset
+
+    ; Set 0 frame
+    ld hl, currFrame
+    ld a, $00
+    ld [hl], a
+
+    call loadPlayerSprite
+    call initdisplay
+
+.main_loop:
+    call waitVBlank
+    call updatePlayer
+
+	jr .main_loop
+
+loadPlayerSprite::
+    ; Load sprite into memory.
+    ld hl, Blob
+	ld de, $8000
+	ld bc, 48
+	call memcpy
+
+    ; Sprite Memory Layout. 4 bytes per sprite.
+    ; 0 - Y / 1 - X / 2 - TileNumber / 3 - Attributes
+
+    ; Set sprite attribute data.
+    ld hl, $FE00
+    ld [hl], PLAYERY ; Y
+    inc l
+    ld [hl], PLAYERX ; X
+    inc l
+    ld [hl],  $00 ; TileNumber
+    inc l
+    ld a, %0001000
+    ld [hl], a ; Attributes
+ret
+
+initdisplay::
+   ; Init display registers
+	ld a, %11100100 ; Load Palette data
+	ld [rBGP], a ; Background Palette
+    ld [rOBP0], a ; Sprite Palette #1
+    ld [rOBP1], a ; Sprite Palette #2
+
+    ; Set screen X/Y to (0,0)
+	xor a
+	ld [rSCY], a
+	ld [rSCX], a
+
+	; Shut down the sound
+	ld [rNR52], a
+
+	; And turn the screen back on
+	ld a, %10000011 ; with sprites
+	ld [rLCDC], a
+ret
+
+updatePlayer::
+    ld hl, currFrame
+    inc [hl] ; next frame
+	ld a, [hl]
+    cp 33
+    jr nz, .continue
+    ld a, $00
+    ld [hl], a ; reset to first frame
+.continue:
+    ld hl, frames
+    ld l, a ; Select frame e.g. frame[a]
+    ld a, [hl] ; load tile number into a
+    ld hl, $FE02
+    ld [hl], a
+ret
+
+
+SECTION "player_vars", WRAM0
+currFrame:: DS 1
+
+SECTION "frames", ROMX[$5D00]
+frames:
+    DB $00, $00, $00, $00, $00, $00, $00, $00, $01, $01, $01, $01, $01, $01, $01, $01, $02, $02, $02, $02, $02, $02, $02, $02, $01, $01, $01, $01, $01, $01, $01, $01

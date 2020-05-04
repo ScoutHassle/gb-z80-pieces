@@ -5,9 +5,10 @@ Current Projects:
 - Hello World
 - Tilemaps
 - Scrolling tilemaps
+- Sprite
+- Sprite Animations
 
 TODO:
-- Sprite drawing
 - Sprite movement
 - Conditions
 - Inputs
