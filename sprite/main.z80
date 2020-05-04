@@ -5,7 +5,7 @@ INCLUDE "core/display.z80"
 SECTION "Header", ROM0[$100]
 
 EntryPoint: ; Execution begins
-	nop
+nop
 	jp main ;
 
 REPT $150 - $104
@@ -16,24 +16,72 @@ SECTION "Game code", rom0
 
 INCLUDE "assets/cloud.inc"
 
-main:
-    
-    call WaitVBlank
-    call LCDOff
+PLAYERY EQU 16
+PLAYERX EQU 8
+
+main::
+    call waitVBlank
+
+    ; stuff - clear sprite VRAM - do this while the screen is on!
+    ld hl, $8000
+    ld bc, $7FF
+    ld a, $00
+    call memset
+
+    call lcdOff
+
+     ; Clear sprite attributes - whilst screen is off...
+    ld hl, $FE00
+    ld bc, $9F
+    ld a, $00
+    call memset
+
+    call loadCloudSprite
+    call initdisplay
 
 .main_loop:
+    call waitVBlank
 
 	jr .main_loop
 
 loadCloudSprite::
     ; Load sprite into memory.
-    ld hl, $8000
-	ld de, CloudTile
+    ld hl, CloudTile
+	ld de, $8000
 	ld bc, 16
 	call memcpy
 
-    ; Set sprite data.
-    ld hl, $FE00
     ; Sprite Memory Layout. 4 bytes per sprite.
     ; 0 - Y / 1 - X / 2 - TileNumber / 3 - Attributes
+
+    ; Set sprite attribute data.
+    ld hl, $FE00
+    ld [hl], PLAYERY ; Y
+    inc l
+    ld [hl], PLAYERX ; X
+    inc l
+    ld [hl],  $00 ; TileNumber
+    inc l
+    ld a, %0001000
+    ld [hl], a ; Attributes
+ret
+
+initdisplay::
+   ; Init display registers
+	ld a, %11100100 ; Load Palette data
+	ld [rBGP], a ; Background Palette
+    ld [rOBP0], a ; Sprite Palette #1
+    ld [rOBP1], a ; Sprite Palette #2
+
+    ; Set screen X/Y to (0,0)
+	xor a
+	ld [rSCY], a
+	ld [rSCX], a
+
+	; Shut down the sound
+	ld [rNR52], a
+
+	; And turn the screen back on
+	ld a, %10000011 ; with sprites
+	ld [rLCDC], a
 ret
