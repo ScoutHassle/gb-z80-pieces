@@ -1,0 +1,122 @@
+SECTION "PLAYER", rom0
+
+playerStartX EQU 16
+playerStartY EQU 128
+
+playerMinX EQU 8
+playerMaxX EQU 160
+
+initPlayer::
+    ; Reset player vars.
+    ld hl, playerX
+    ld [hl], playerStartX
+     ld hl, playerY
+    ld [hl], playerStartY
+        
+    ; Set 0 frame
+    ld hl, currFrame
+    ld a, $00
+    ld [hl], a
+
+.loadPlayerSprite::
+    ; Load sprite into memory.
+    ld hl, Blob
+	ld de, $8000
+	ld bc, 48
+	call memcpy
+
+    ; Sprite Memory Layout. 4 bytes per sprite.
+    ; 0 - Y / 1 - X / 2 - TileNumber / 3 - Attributes
+
+    ; Set sprite attribute data.
+    ld hl, $FE00
+    ld [hl], playerStartY ; Y
+
+    inc l
+    ld [hl], playerStartX ; X
+
+    inc l
+    ld [hl], $00 ; TileNumber
+    inc l
+    ld a, %0001000
+    ld [hl], a ; Attributes
+ret
+
+updatePlayer::
+
+.updateInput::
+    ld hl, $FF00 ; Input bits
+    ld a, $20 ; Check for arrows. NOTE: $10 would check buttons.
+    ld [hl], a ; So now we have the input...
+
+.playerRightInput:
+    bit $0, [hl] ; check right input
+    jr nz, .playerLeftInput
+.moveRight:
+	ld hl, playerX
+	ld a, [hl]
+	ld b, 1
+	adc a, b
+    ld b, a
+    sub playerMaxX ; if a>=160
+    jp c, .setX ; goto else
+    ld b, playerMaxX
+    jp .setX
+
+.playerLeftInput:
+    bit $01, [hl]
+    jr nz, .endInput
+.scrollLeft:
+	ld hl, playerX
+	ld a, [hl]
+	ld b, 1
+	sbc a, b
+    ld b, a
+    sub playerMinX ; if a < 8
+    jp nc, .setX
+    ld b, playerMinX
+
+.setX
+    ; Reset input
+    ld [hl], b ; set new b
+
+.endInput:
+    ld hl, $FF00
+    ld [hl], $FF
+
+.updatePlayerPosition:
+    ld hl, playerY
+    ld a, [hl]
+    ld hl, $FE00
+    ld [hl], a ; Y
+
+    ld hl, playerX
+    ld a, [hl]
+    ld hl, $FE01
+    ld [hl], a ; X
+
+.updatePlayerAnimation::
+    ld hl, currFrame
+    inc [hl] ; next frame
+	ld a, [hl]
+    cp 33
+    jr nz, .continue
+    ld a, $00
+    ld [hl], a ; reset to first frame
+.continue:
+    ld hl, frames
+    ld l, a ; Select frame e.g. frame[a]
+    ld a, [hl] ; load tile number into a
+    ld hl, $FE02
+    ld [hl], a
+ret
+
+
+SECTION "player_vars", WRAM0
+currFrame:: DS 1
+playerX:: DS 1
+playerY:: DS 1
+
+SECTION "frames", ROMX[$5D00]
+frames:
+    DB $00, $00, $00, $00, $00, $00, $00, $00, $01, $01, $01, $01, $01, $01, $01, $01, $02, $02, $02, $02, $02, $02, $02, $02, $01, $01, $01, $01, $01, $01, $01, $01

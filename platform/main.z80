@@ -1,0 +1,106 @@
+INCLUDE "../core/hardware.inc"
+INCLUDE "../core/memory.z80"
+INCLUDE "../core/display.z80"
+
+SECTION "Header", ROM0[$100]
+
+EntryPoint: ; Execution begins
+nop
+	jp main ;
+
+REPT $150 - $104
+	db 0
+endr
+
+SECTION "Game code", rom0
+
+INCLUDE "assets/Blob_Bounce.z80"
+INCLUDE "assets/platforms.z80"
+INCLUDE "player.z80"
+
+
+main::
+    call waitVBlank
+
+    ; stuff - clear sprite VRAM - do this while the screen is on!
+    ld hl, $8000
+    ld bc, $7FF
+    ld a, $00
+    call memset
+
+    call lcdOff
+
+     ; Clear sprite attributes - whilst screen is off...
+    ld hl, $FE00
+    ld bc, $9F
+    ld a, $00
+    call memset
+
+    call initPlayer
+
+    call loadPlatforms
+    ;call loadPlayerSprite
+    call initdisplay
+
+.main_loop:
+    call waitVBlank
+    call updatePlayer
+
+
+	jr .main_loop
+
+loadPlatforms::
+    ld hl, Platforms
+    ld de, $9000
+    ld bc, PlatformSize
+    call memcpy
+
+.loadmapdata:
+    ld hl, PlatformMap
+    ld de, $9800
+; Basically do this a line at a time until size...
+   ld b, 0
+   ld c, 0
+.row:
+    ; Copy entire row
+    push bc
+    ld bc, PlatformMapWidth
+    call memcpy
+    pop bc
+
+    ; Next row
+    ld c, 0 ; back to start
+    inc b
+    ld a, ($20 - PlatformMapWidth) ; Loop until de is right
+.nextrow:
+    inc de
+    dec a
+    jr nz, .nextrow
+
+    ld a, b
+    cp PlatformMapHeight
+    jr nz, .row
+.exit
+ret
+
+
+initdisplay::
+   ; Init display registers
+	ld a, %11100100 ; Load Palette data
+	ld [rBGP], a ; Background Palette
+    ld [rOBP0], a ; Sprite Palette #1
+    ld [rOBP1], a ; Sprite Palette #2
+
+    ; Set screen X/Y to (0,0)
+	xor a
+	ld [rSCY], a
+	ld [rSCX], a
+
+	; Shut down the sound
+	ld [rNR52], a
+
+	; And turn the screen back on
+	ld a, %10000011 ; with sprites
+	ld [rLCDC], a
+ret
+
