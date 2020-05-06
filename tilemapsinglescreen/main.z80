@@ -52,17 +52,12 @@ loadPlatforms::
     ld hl, PlatformMap
     ld de, $9800
     ld bc, 0 ; b/c used individually
-.col:
-    ; Copy into this slot
-    ld a, [hl+]
-    ld [de], a
-    inc de
-
-    ; next column
-    inc c
-    ld a, c
-    cp PlatformMapWidth
-    jr nz, .col
+.row:
+    ; Copy entire row
+    push bc
+    ld bc, PlatformMapWidth
+    call memcpy
+    pop bc
 
     ; Next row
     ld c, 0 ; back to start
@@ -75,7 +70,7 @@ loadPlatforms::
 
     ld a, b
     cp PlatformMapHeight
-    jr nz, .col
+    jr nz, .row
 .exit
 ret
 
