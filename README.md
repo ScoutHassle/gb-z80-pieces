@@ -8,10 +8,11 @@ Current Projects:
 - Sprite
 - Sprite Animations
 - Inputs
-
-TODO:
 - Sprite movement
 - Conditions
+
+TODO:
+
 - Background update/changing
 
 ---

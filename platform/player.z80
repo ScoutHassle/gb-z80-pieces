@@ -6,12 +6,24 @@ playerStartY EQU 128
 playerMinX EQU 8
 playerMaxX EQU 160
 
+playerMinY EQU 16
+playerMaxY EQU 128
+
+playerMoveSpeed EQU 1
+playerJumpSpeed EQU 8
+gravity EQU 1
+
 initPlayer::
     ; Reset player vars.
     ld hl, playerX
     ld [hl], playerStartX
-     ld hl, playerY
+    ld hl, playerY
     ld [hl], playerStartY
+
+    ld hl, playerGrounded
+    ld [hl], $01
+    ld hl, playerVelocityY
+    ld [hl], $00
         
     ; Set 0 frame
     ld hl, currFrame
@@ -43,20 +55,25 @@ initPlayer::
 ret
 
 updatePlayer::
+; Does the following in the following order...
+; Input
+; Position
+; Animation
 
+; OPTIMISATION TO MAKE UP/LEFT AND DOWN/RIGHT SHARE CODE.
 .updateInput::
     ld hl, $FF00 ; Input bits
-    ld a, $20 ; Check for arrows. NOTE: $10 would check buttons.
+    ld a, %11101111 ; Check for arrows. NOTE: $10 would check buttons.
     ld [hl], a ; So now we have the input...
+    ld a, [hl]
 
 .playerRightInput:
     bit $0, [hl] ; check right input
     jr nz, .playerLeftInput
-.moveRight:
+    ; Move right
 	ld hl, playerX
 	ld a, [hl]
-	ld b, 1
-	adc a, b
+	adc a, playerMoveSpeed
     ld b, a
     sub playerMaxX ; if a>=160
     jp c, .setX ; goto else
@@ -65,35 +82,93 @@ updatePlayer::
 
 .playerLeftInput:
     bit $01, [hl]
-    jr nz, .endInput
-.scrollLeft:
+    jr nz, .handleButtonInputs
+    ; Move left
 	ld hl, playerX
 	ld a, [hl]
-	ld b, 1
-	sbc a, b
+	sbc a, playerMoveSpeed
     ld b, a
     sub playerMinX ; if a < 8
     jp nc, .setX
     ld b, playerMinX
 
-.setX
-    ; Reset input
+.setX:
+    ; Set playerX - currently in hl
     ld [hl], b ; set new b
 
+; reset
+.handleButtonInputs:
+    ld hl, $FF00 ; Input bits
+    ld a, %11011111 ; Check for arrows. NOTE: $10 would check buttons.
+    ld [hl], a ; So now we have the input...
+    bit $05, [hl]
+    jr nz, .endInput
+
+.handleJumpButton:   
+    bit $00, [hl]  ; A
+    jr nz, .endInput
+    ld hl, playerGrounded
+    ld a, [hl]
+    cp 1
+    jr nz, .endInput
+
+    ld [hl], $00
+    ld hl, playerVelocityY
+    ld [hl], playerJumpSpeed
+
 .endInput:
+    ; Reset.
     ld hl, $FF00
     ld [hl], $FF
 
 .updatePlayerPosition:
-    ld hl, playerY
-    ld a, [hl]
-    ld hl, $FE00
-    ld [hl], a ; Y
-
+    ; X is easy
     ld hl, playerX
     ld a, [hl]
     ld hl, $FE01
     ld [hl], a ; X
+
+.updatePlayerY:
+    ; bit more advanced
+    ld hl, playerGrounded
+    ld a, [hl]
+    cp 0
+    jr nz, .updatePlayerAnimation ; next
+
+    ; decrease velocity by gravity
+    ld hl, playerVelocityY
+    ld a, [hl]
+    sub a, gravity
+    ld [hl], a
+    ld b, a
+
+    ; Now work out if we move are we in the limits?
+    ld hl, playerY
+    ld a, [hl]   
+    sbc a, b
+    ld b, a ; shove that in b for a minute.
+    sub playerMaxY ; if a>=160
+    jp c, .setY ; still falling
+
+    ; Alright hit our limit, kill velocity, ground the player
+    ld hl, playerVelocityY
+    ld [hl], 0
+    ld hl, playerGrounded
+    ld [hl], 1
+
+    ; Move playerY back
+    ld hl, playerY
+    ld b, playerMaxY ; set limit
+
+.setY:
+    ld [hl], b ; set playerY
+
+.updateSpriteY:
+    ; Update sprite.
+    ld hl, playerY
+    ld a, [hl]
+    ld hl, $FE00
+    ld [hl], a ; Y
 
 .updatePlayerAnimation::
     ld hl, currFrame
@@ -116,6 +191,10 @@ SECTION "player_vars", WRAM0
 currFrame:: DS 1
 playerX:: DS 1
 playerY:: DS 1
+playerIO:: DS 1
+
+playerGrounded:: DS 1
+playerVelocityY:: DS 1
 
 SECTION "frames", ROMX[$5D00]
 frames:
