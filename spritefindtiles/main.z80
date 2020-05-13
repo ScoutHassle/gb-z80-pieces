@@ -16,8 +16,8 @@ SECTION "Game code", rom0
 
 INCLUDE "assets/cloud.inc"
 
-PLAYERY EQU 67
-PLAYERX EQU 32
+PLAYERY EQU 128
+PLAYERX EQU 120
 
 main::
     call waitVBlank
@@ -85,28 +85,31 @@ loadCloudSprite::
     srl a ; 8
 
     sub a, 2 ; sub 2 because the sprite starts at 16.
-    add a, a ; 2
-    add a, a ;4
-    add a, a ; 8
-    add a, a ; 16
-    add a, a ; 32
-    ld c, a
+    ld l, a
+    ld h, $00
+    ; We need 16 bit maths so use hl
+    add hl, hl ; 2
+    add hl, hl ; 4
+    add hl, hl ; 8
+    add hl, hl ; 16
+    add hl, hl ; 32
 
     ; Now move across the selected row.
-    ld a, PLAYERX
+    ld a, PLAYERX ; Max X is 160 so will git into 8bit.
     srl a ; 2
     srl a ; 4
     srl a ; 8
     sub a, 1 ; sub 1 because the sprite start at 8.
-    add a, c
+    ; Store result
     ld c, a
-
-
     ld b, $00
-    ld hl, $9800
+    ; Add it to the Y result in hl.
     add hl, bc
-    ;add [hl], a
+    ; Now move to 9800 + hl
+    ld bc, $9800
+    add hl, de
 
+    ; For point of demo, set sprite to a cloud.
     ld [hl], $00
 ret
 
