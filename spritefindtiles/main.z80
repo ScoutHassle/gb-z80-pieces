@@ -107,7 +107,7 @@ loadCloudSprite::
     add hl, bc
     ; Now move to 9800 + hl
     ld bc, $9800
-    add hl, de
+    add hl, bc
 
     ; For point of demo, set sprite to a cloud.
     ld [hl], $00
