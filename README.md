@@ -99,3 +99,5 @@ http://marc.rawer.de/Gameboy/Docs/GBCPUman.pdf
 http://www.z80.info/z80syntx.htm#SLA
 https://gist.github.com/neuro-sys/0d08b1af7fd033193d06
 http://voidptr.io/blog/2017/01/21/GameBoy.html
+http://map.grauw.nl/articles/mult_div_shifts.php
+http://www.z80.info/z80code.htm

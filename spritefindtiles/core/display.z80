@@ -1,0 +1,19 @@
+SECTION "Display", ROMX
+
+; Waits to pass VBlank e.g. when its safe 
+; to turn of the screen and access VRAM.
+waitVBlank::
+   ld a, [rLY]
+   cp 144 ; Check if we are past VBlank
+   jr nz, waitVBlank ; else wait
+ret
+
+lcdOff::
+    ld hl, $FF40
+	res 7, [hl]
+ret
+
+lcdOn::
+    ld hl, $FF40
+    set 7, [hl]
+ret

@@ -1,0 +1,132 @@
+INCLUDE "core/hardware.inc"
+INCLUDE "core/memory.z80"
+INCLUDE "core/display.z80"
+
+SECTION "Header", ROM0[$100]
+
+EntryPoint: ; Execution begins
+nop
+	jp main ;
+
+REPT $150 - $104
+	db 0
+endr
+
+SECTION "Game code", rom0
+
+INCLUDE "assets/cloud.inc"
+
+PLAYERY EQU 67
+PLAYERX EQU 32
+
+main::
+    call waitVBlank
+
+    ; stuff - clear sprite VRAM - do this while the screen is on!
+    ld hl, $8000
+    ld bc, $7FF
+    ld a, $00
+    call memset
+
+    call lcdOff
+
+    ld hl, $9800
+    ld bc, $0BFF
+    ld a, $01
+    call memset
+
+
+     ; Clear sprite attributes - whilst screen is off...
+    ld hl, $FE00
+    ld bc, $9F
+    ld a, $00
+    call memset
+
+    call loadCloudSprite
+    call initdisplay
+
+.main_loop:
+    call waitVBlank
+
+
+
+	jr .main_loop
+
+loadCloudSprite::
+    ; Load sprite into memory.
+    ld hl, CloudTile
+	ld de, $8000
+	ld bc, 16
+	call memcpy
+
+    ; Sprite Memory Layout. 4 bytes per sprite.
+    ; 0 - Y / 1 - X / 2 - TileNumber / 3 - Attributes
+
+    ; Set sprite attribute data.
+    ld hl, $FE00
+    ld [hl], PLAYERY ; Y
+    inc l
+    ld [hl], PLAYERX ; X
+    inc l
+    ld [hl],  $00 ; TileNumber
+    inc l
+    ld a, %0001000
+    ld [hl], a ; Attributes
+
+    ; Also do a janky thing
+    ld hl, CloudTile
+	ld de, $9000
+	ld bc, 16
+	call memcpy
+
+    ld a, PLAYERY       ; Divide by 8
+    srl a ; 2
+    srl a ; 4
+    srl a ; 8
+
+    sub a, 2 ; sub 2 because the sprite starts at 16.
+    add a, a ; 2
+    add a, a ;4
+    add a, a ; 8
+    add a, a ; 16
+    add a, a ; 32
+    ld c, a
+
+    ; Now move across the selected row.
+    ld a, PLAYERX
+    srl a ; 2
+    srl a ; 4
+    srl a ; 8
+    sub a, 1 ; sub 1 because the sprite start at 8.
+    add a, c
+    ld c, a
+
+
+    ld b, $00
+    ld hl, $9800
+    add hl, bc
+    ;add [hl], a
+
+    ld [hl], $00
+ret
+
+
+initdisplay::
+   ; Init display registers
+	ld a, %11100100 ; Load Palette data
+	ld [rBGP], a ; Background Palette
+    ld [rOBP0], a ; Sprite Palette #1
+    ld [rOBP1], a ; Sprite Palette #2
+
+    ; Set screen X/Y to (0,0)
+	xor a
+	ld [rSCY], a
+	ld [rSCX], a
+
+	; Shut down the sound
+	ld [rNR52], a
+
+	; And turn the screen back on
+	ld a, %10000011 ; with sprites
+	ld [rLCDC], a
+ret
