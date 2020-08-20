@@ -24,6 +24,8 @@ initPlayer::
 
     ld hl, playerGrounded
     ld [hl], $01
+    ld hl, playerJumping
+    ld [hl], $00
     ld hl, playerVelocityY
     ld [hl], $00
         
@@ -115,6 +117,8 @@ updatePlayer::
     jr nz, .endInput
 
     ld [hl], $00
+    ld hl, playerJumping
+    ld [hl], $01
     ld hl, playerVelocityY
     ld [hl], playerJumpSpeed
     ld hl, playerJumpTimer
@@ -155,7 +159,9 @@ updatePlayer::
         ld a, playerFallSpeed
         ld [hl], a
         ld hl, playerGrounded
-        ld [hl], 1
+        ld [hl], $00
+        ld hl, playerJumping
+        ld [hl], $00
         jp .applyVelocity
 
    
@@ -172,10 +178,9 @@ updatePlayer::
     ; The tile below us is a floor tile.
     
     ; If we are jumping currently.
-    ld hl, playerGrounded ;e.g. is player jumping - not used beyond that atm so rename it.
-    ld a, [hl]
-    cp 0
-    jr z, .applyVelocity; off you pop
+    ld hl, playerJumping
+    bit $00, [hl]  ; Jumping?
+    jr nz, .checkJump
 
 
     ; No? Grounded, carry on like that.
@@ -186,15 +191,11 @@ updatePlayer::
     ld [hl], $00
     ld hl, playerGrounded
     ld [hl], $01
+    ld hl, playerJumping
+    ld [hl], $00
 
-.applyVelocity: ; Always called
 .checkJump:
-   ; ld hl, playerGrounded
-   ; ld a, [hl]
-   ; cp 0
-   ; jr nz
-
-.actuallyApplyVelocity:
+.applyVelocity: ; Always called
     ld hl, playerVelocityY
     ld b, [hl]
     ld hl, playerY
@@ -301,6 +302,7 @@ playerIO:: DS 1
 
 playerJumpTimer:: DS 1
 playerGrounded:: DS 1
+playerJumping:: DS 1
 playerVelocityY:: DS 1
 
 SECTION "frames", ROMX[$5D00]
