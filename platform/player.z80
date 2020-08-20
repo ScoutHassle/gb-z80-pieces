@@ -1,7 +1,7 @@
 SECTION "PLAYER", rom0
 
-playerStartX EQU 16
-playerStartY EQU 128
+playerStartX EQU 80
+playerStartY EQU 48
 
 playerMinX EQU 8
 playerMaxX EQU 160
@@ -10,8 +10,10 @@ playerMinY EQU 16
 playerMaxY EQU 128
 
 playerMoveSpeed EQU 1
-playerJumpSpeed EQU 8
+playerJumpSpeed EQU 6
+playerFallSpeed EQU -1
 gravity EQU 1
+playerMaxFallSpeed EQU -4
 
 initPlayer::
     ; Reset player vars.
@@ -115,6 +117,8 @@ updatePlayer::
     ld [hl], $00
     ld hl, playerVelocityY
     ld [hl], playerJumpSpeed
+    ld hl, playerJumpTimer
+    ld [hl], playerJumpSpeed
 
 .endInput:
     ; Reset.
@@ -129,33 +133,81 @@ updatePlayer::
     ld [hl], a ; X
 
 .updatePlayerY:
-    ; bit more advanced
-    ld hl, playerGrounded
-    ld a, [hl]
-    cp 0
-    jr nz, .updatePlayerAnimation ; Nothing to do - next
+    call findPlayerTile
+    ; store current tile value
+    ld e, [hl]
+    ; so now I want hl + $20
+    ld b, $00
+    ld c, $20
+    add hl, bc ; Tile below us
 
-    ; decrease velocity by gravity
-    ld hl, playerVelocityY
-    ld a, [hl]
-    sub a, gravity
-    ld [hl], a
-    jp nc, .goingup
-    ; going down
-    jp .continueY
-
-
-
-.goingup:
-    call findTile
-    ; b is $00
-    
-    ; do this 32 times...
-    ;sub hl, bc
+    ; If below us IS NOT 4, stop
     ld a, [hl]
     sub 4
-    jp nz, .stopY
+    jp nz, .isGrounded ; != 4
+.noTileBelow:
+    ; below == 4, so we fall
+    ; Apply gravity
+    ld hl, playerVelocityY
+    ld a, [hl]
+    cp 0
+    jr nz, .fall ; Start fall
+        ld a, playerFallSpeed
+        ld [hl], a
+        ld hl, playerGrounded
+        ld [hl], 1
+        jp .applyVelocity
+
    
+
+.fall:
+    cp playerMaxFallSpeed
+    jr z, .applyVelocity ; no lower
+
+    sub a, gravity
+    ld [hl], a
+    jp .applyVelocity
+
+.isGrounded:
+    ; The tile below us is a floor tile.
+    
+    ; If we are jumping currently.
+    ld hl, playerGrounded ;e.g. is player jumping - not used beyond that atm so rename it.
+    ld a, [hl]
+    cp 0
+    jr z, .applyVelocity; off you pop
+
+
+    ; No? Grounded, carry on like that.
+
+.setGrounded:
+; kill all this
+    ld hl, playerVelocityY
+    ld [hl], $00
+    ld hl, playerGrounded
+    ld [hl], $01
+
+.applyVelocity: ; Always called
+.checkJump:
+   ; ld hl, playerGrounded
+   ; ld a, [hl]
+   ; cp 0
+   ; jr nz
+
+.actuallyApplyVelocity:
+    ld hl, playerVelocityY
+    ld b, [hl]
+    ld hl, playerY
+    ld a, [hl]
+    sbc a, b
+    ld [hl], a ; set playerY
+ 
+.setYPosition:
+    ld hl, $FE00
+    ld [hl], a ; set spriteY
+
+    ; Continue update loop
+    jp .updatePlayerAnimation
 
 .continueY:
     ld hl, playerVelocityY
@@ -205,15 +257,9 @@ updatePlayer::
     ld [hl], a
 ret
 
-.stopY:
-    ld hl, playerVelocityY
-    ld [hl], -1
-    ld b, -1
-    jp .continueY
-
 
 ; hl - Returns the players tile location.
-findTile:
+findPlayerTile:
     ld de, playerY
     ld a, [de]       ; Divide by 8
     srl a ; 2
@@ -253,6 +299,7 @@ playerX:: DS 1
 playerY:: DS 1
 playerIO:: DS 1
 
+playerJumpTimer:: DS 1
 playerGrounded:: DS 1
 playerVelocityY:: DS 1
 
